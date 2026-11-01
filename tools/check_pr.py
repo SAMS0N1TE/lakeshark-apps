@@ -120,7 +120,9 @@ def main(argv=None):
         rules['build'] = ('fail' if not build_ok else
                           'skipped for apps that failed the checks above' if skipped else 'pass')
         if not a.no_sim and built:
+            import os
             import sim_check
+            os.environ.setdefault('LSDK_SIM_BUILD', str((out / 'sim' / 'build').resolve()))
             sdk = sdk_dir(a.sdk)
             why_not = sim_check.unavailable(sdk)
             if why_not:
