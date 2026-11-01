@@ -88,7 +88,7 @@ jobs:
           LAKESHARK_COMMUNITY_KEY_FILE="$key" \
           LAKESHARK_SDK="$GITHUB_WORKSPACE/.sdk-checkout/$SDK_PATH" \
           LAP_CC="$HOME/riscv32-esp-elf/bin/riscv32-esp-elf-gcc" \
-            python tools/catalog.py --out out
+            python tools/catalog.py --out out --live https://apps.terminalbay.com/catalog.json
           rm -f "$key"
 
       - name: Remove the key

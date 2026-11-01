@@ -62,6 +62,25 @@ def media_for(app_dir, app_id, out, sim_dir):
     return fields
 
 
+def load_live(src):
+    """(id, version) -> the published entry. A catalog that cannot be read counts as
+    empty: publishing then rebuilds, and the store refuses any changed .lap."""
+    if not src:
+        return {}
+    try:
+        if src.startswith('https://'):
+            import urllib.request
+            with urllib.request.urlopen(src, timeout=30) as r:
+                cat = json.load(r)
+        else:
+            cat = load_json(src)
+    except Exception as e:  # noqa: BLE001
+        print('live catalog not read (%s); building every version fresh' % type(e).__name__)
+        return {}
+    return {(x['id'], x['version']): x for x in cat.get('apps', [])
+            if isinstance(x, dict) and x.get('id') and x.get('sha256') and isinstance(x.get('size'), int)}
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('apps', nargs='*', help='app folders (default: every folder in apps/)')
@@ -70,7 +89,9 @@ def main(argv=None):
     ap.add_argument('--min-firmware', default='2.20.0', help='first release carrying the community key')
     ap.add_argument('--owners', default=str(REPO / 'owners.json'))
     ap.add_argument('--sim-thumbs', help='folder from sim_check.py with <id>/thumb.png for apps without one')
+    ap.add_argument('--live', help='the published catalog.json (URL or file); versions in it keep their file')
     a = ap.parse_args(argv)
+    live = load_live(a.live)
 
     key = os.environ.get(KEY_ENV)
     if not key or not Path(key).is_file():
@@ -115,12 +136,19 @@ def main(argv=None):
                 sys.exit('catalog: apps/%s: the built manifest says id %r version %r' % (app_id, m['id'],
                                                                                          m['version']))
             name = '%s-%s.lap' % (m['id'], m['version'])
-            (out / 'files' / name).write_bytes(data)
+            # A version already published keeps its file: signing is not byte-for-byte
+            # repeatable, and the store never replaces a published .lap.
+            prev = live.get((m['id'], m['version']))
+            if prev:
+                size, sha = prev['size'], prev['sha256']
+            else:
+                (out / 'files' / name).write_bytes(data)
+                size, sha = len(data), hashlib.sha256(data).hexdigest()
             entry = {
                 'id': m['id'], 'name': m['name'], 'sub': m['sub'], 'version': m['version'],
                 'author': m['author'], 'category': meta['category'], 'color': m['color'],
                 'icon_art': m['icon_art'], 'description': meta['description'],
-                'size': len(data), 'sha256': hashlib.sha256(data).hexdigest(), 'signed': True,
+                'size': size, 'sha256': sha, 'signed': True,
                 'file': 'files/' + name, 'min_firmware': a.min_firmware,
             }
             if meta.get('status') == 'wip':
@@ -134,7 +162,7 @@ def main(argv=None):
                 'source': SOURCE + app_id,
             })
             entries.append(entry)
-            print('%-12s %-8s %6d B  %s' % (m['id'], m['version'], len(data), name))
+            print('%-12s %-8s %6d B  %s%s' % (m['id'], m['version'], size, name, '  (already published)' if prev else ''))
 
     files = []
     for f in sorted(out.rglob('*')):
