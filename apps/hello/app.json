@@ -1,0 +1,21 @@
+{
+  "schema": 2,
+  "id": "hello",
+  "category": "utilities",
+  "description": "A sample app for the community catalog. Counts hellos, with a chirp you can turn on in OPTIONS.",
+  "license": "MIT",
+  "source_url": "",
+  "ai": {
+    "use": "none",
+    "tools": [],
+    "extent": ""
+  },
+  "third_party": [],
+  "references": [],
+  "declarations": {
+    "own_work_or_licensed": true,
+    "no_ai_cleanroom": true,
+    "licenses_respected": true,
+    "ethical_sources": true
+  }
+}

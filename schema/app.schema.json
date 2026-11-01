@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/SAMS0N1TE/lakeshark-apps/blob/main/schema/app.schema.json",
+  "title": "LakeShark community app.json (schema 2)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "id", "category", "description", "license", "ai", "third_party", "references", "declarations"],
+  "properties": {
+    "schema": {"const": 2},
+    "id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,30}$"},
+    "category": {"enum": ["games", "tools", "radio", "maps", "utilities"]},
+    "description": {"type": "string", "minLength": 10, "maxLength": 500},
+    "license": {"enum": ["MIT", "BSD-2-Clause", "BSD-3-Clause", "ISC", "Apache-2.0", "Zlib", "Unlicense",
+                         "CC0-1.0", "0BSD", "MPL-2.0", "GPL-2.0-or-later", "GPL-3.0-only", "GPL-3.0-or-later",
+                         "LGPL-2.1-or-later", "LGPL-3.0-or-later"]},
+    "source_url": {"type": "string", "maxLength": 300, "pattern": "^(https://[^\\s]+)?$"},
+    "ai": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["use", "tools", "extent"],
+      "properties": {
+        "use": {"enum": ["none", "assisted", "substantial", "generated"]},
+        "tools": {"type": "array", "maxItems": 10, "items": {"type": "string", "minLength": 1, "maxLength": 60}},
+        "extent": {"type": "string", "maxLength": 1000}
+      },
+      "if": {"properties": {"use": {"const": "none"}}},
+      "then": {"properties": {"tools": {"maxItems": 0}}},
+      "else": {"properties": {"tools": {"minItems": 1}, "extent": {"minLength": 10}}}
+    },
+    "third_party": {
+      "type": "array",
+      "maxItems": 50,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "license", "url", "use"],
+        "properties": {
+          "name": {"type": "string", "minLength": 1, "maxLength": 100},
+          "license": {"type": "string", "maxLength": 40},
+          "url": {"type": "string", "maxLength": 300, "pattern": "^(https?://[^\\s]+)?$"},
+          "use": {"enum": ["code", "data", "asset", "reference"]}
+        }
+      }
+    },
+    "references": {"type": "array", "maxItems": 50, "items": {"type": "string", "minLength": 1, "maxLength": 300}},
+    "declarations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["own_work_or_licensed", "no_ai_cleanroom", "licenses_respected", "ethical_sources"],
+      "properties": {
+        "own_work_or_licensed": {"const": true},
+        "no_ai_cleanroom": {"const": true},
+        "licenses_respected": {"const": true},
+        "ethical_sources": {"const": true}
+      }
+    },
+    "status": {"enum": ["wip"]}
+  }
+}
