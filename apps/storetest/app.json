@@ -1,0 +1,24 @@
+{
+  "schema": 2,
+  "id": "storetest",
+  "category": "tools",
+  "description": "A test of the store pipeline: a face, one live value, the keys and OPTIONS. Not for the store.",
+  "license": "MIT",
+  "source_url": "",
+  "ai": {
+    "use": "generated",
+    "tools": [
+      "lsdk new template"
+    ],
+    "extent": "Made from the blank template with no changes, to test publishing."
+  },
+  "third_party": [],
+  "references": [],
+  "declarations": {
+    "own_work_or_licensed": true,
+    "no_ai_cleanroom": true,
+    "licenses_respected": true,
+    "ethical_sources": true
+  },
+  "status": "wip"
+}
