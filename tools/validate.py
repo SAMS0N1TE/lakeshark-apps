@@ -13,6 +13,7 @@ Prints one line per problem and exits 1 if there is any.
 import argparse
 import json
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -398,7 +399,7 @@ def check_licenses(meta, license_text, p, tag):
     elif _no_license(lic):
         p.add('license', tag, 'the app needs an open license from the list; "%s" is not accepted' % lic)
     if lic in LICENSE_TEXT and license_text is not None:
-        text = ' '.join(license_text.lower().replace('’', "'").split())
+        text = ' '.join(license_text.lower().replace('\u2019', "'").split())
         need, never = LICENSE_TEXT[lic]
         if not all(n in text for n in need) or any(n in text for n in never):
             p.add('license', tag, 'LICENSE does not look like the %s text; paste the full %s license' % (lic, lic))
@@ -433,7 +434,8 @@ def check_ai(meta, p, tag):
             not isinstance(t, str) or not t.strip() for t in tools):
         p.add('ai', tag, 'app.json: "ai.tools" has an empty name')
     extent = ai.get('extent')
-    if ai.get('use') not in (None, 'none') and isinstance(extent, str) and len(extent.split()) < 3:
+    if (ai.get('use') not in (None, 'none') and isinstance(extent, str) and len(extent) >= 10
+            and len(extent.split()) < 3):  # shorter ones already failed the schema
         p.add('ai', tag, 'app.json: "ai.extent" needs a few plain words on what the AI did')
 
 
@@ -667,7 +669,11 @@ def main(argv=None):
     changed = None
     dirs = [Path(d).resolve() for d in a.apps]
     if a.changed_from:
-        changed = changed_paths(repo, a.changed_from)
+        try:
+            changed = changed_paths(repo, a.changed_from)
+        except (OSError, subprocess.CalledProcessError) as e:
+            why = (str(getattr(e, 'stderr', '') or e).strip().splitlines() or ['?'])[0]
+            ap.error('git diff against %s failed: %s' % (a.changed_from, why))
         ids = sorted({c.split('/')[1] for c in changed if c.startswith('apps/') and c.count('/') >= 2})
         dirs += [repo / 'apps' / i for i in ids if (repo / 'apps' / i).is_dir()]
     if not dirs and changed is None:
