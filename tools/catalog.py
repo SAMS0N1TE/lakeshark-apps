@@ -70,7 +70,9 @@ def load_live(src):
     try:
         if src.startswith('https://'):
             import urllib.request
-            with urllib.request.urlopen(src, timeout=30) as r:
+            # Cloudflare turns away Python's default User-Agent.
+            req = urllib.request.Request(src, headers={'User-Agent': 'lakeshark-apps-publish'})
+            with urllib.request.urlopen(req, timeout=30) as r:
                 cat = json.load(r)
         else:
             cat = load_json(src)
