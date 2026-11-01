@@ -2,7 +2,7 @@
   "schema": 2,
   "id": "hello",
   "category": "utilities",
-  "description": "A sample app for the community catalog. Counts hellos, with a chirp you can turn on in OPTIONS.",
+  "description": "The sample app for the community catalog: counts hellos, with a chirp you can turn on in OPTIONS.",
   "license": "MIT",
   "source_url": "",
   "ai": {
