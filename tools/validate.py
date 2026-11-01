@@ -506,7 +506,7 @@ def check_source(app_dir, files, meta, p, tag):
     where, fields = found[0]
     if not fields['id']:
         p.add('source', tag, '%s: LAP_APP(...) has no .id = "..."' % where)
-    elif isinstance(meta, dict) and fields['id'] != meta.get('id'):
+    elif isinstance(meta, dict) and isinstance(meta.get('id'), str) and fields['id'] != meta['id']:
         p.add('source', tag, 'app.json "id" is "%s" but LAP_APP in %s says .id = "%s"; make them the same'
               % (meta.get('id'), where, fields['id']))
     if fields['id'] and fields['id'] != app_dir.name:

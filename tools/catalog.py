@@ -68,6 +68,7 @@ def main(argv=None):
     ap.add_argument('--sdk')
     ap.add_argument('--out', default='out')
     ap.add_argument('--min-firmware', default='2.20.0', help='first release carrying the community key')
+    ap.add_argument('--owners', default=str(REPO / 'owners.json'))
     ap.add_argument('--sim-thumbs', help='folder from sim_check.py with <id>/thumb.png for apps without one')
     a = ap.parse_args(argv)
 
@@ -78,7 +79,7 @@ def main(argv=None):
         sys.exit('catalog: the signing key must not live inside the repository')
 
     dirs = [Path(d).resolve() for d in a.apps] or app_dirs()
-    owners = load_json(REPO / 'owners.json')
+    owners = load_json(a.owners)
     p, _ = validate.validate(dirs)
     if p:
         for line in p.lines():

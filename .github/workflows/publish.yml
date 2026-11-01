@@ -1,0 +1,126 @@
+# On main: build and sign every app with the community key, then send the
+# catalog and files to the store (apps-api.terminalbay.com/ingest).
+# Only merged code runs here. Secrets reach the steps that need them through
+# env, are written to files under a 077 umask, and are deleted afterwards.
+name: publish
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/**'
+      - 'owners.json'
+      - 'sdk.lock'
+      - 'tools/**'
+      - '.github/workflows/publish.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+env:
+  GCC_VERSION: esp-14.2.0_20260121
+  GCC_SHA256: b3fce4b04dd15a9f0ed1c209b5a2f389c04eff92ed85e4cc0ebc275b7d95e95a
+  INGEST_URL: https://apps-api.terminalbay.com/ingest
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out the catalog
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Read sdk.lock
+        id: sdk
+        run: python3 tools/sdk_lock.py sdk.lock >> "$GITHUB_OUTPUT"
+
+      - name: Check out the SDK at sdk.lock
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ steps.sdk.outputs.repo }}
+          ref: ${{ steps.sdk.outputs.ref }}
+          path: .sdk-checkout
+          sparse-checkout: ${{ steps.sdk.outputs.path }}
+          persist-credentials: false
+
+      - name: Restore the RISC-V toolchain
+        id: gcc
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/riscv32-esp-elf
+          key: riscv32-esp-elf-${{ env.GCC_VERSION }}-linux-amd64
+
+      - name: Download the RISC-V toolchain
+        if: steps.gcc.outputs.cache-hit != 'true'
+        run: |
+          tarball="$RUNNER_TEMP/gcc.tar.xz"
+          curl -fsSL --retry 3 -o "$tarball" \
+            "https://github.com/espressif/crosstool-NG/releases/download/${GCC_VERSION}/riscv32-esp-elf-${GCC_VERSION#esp-}-x86_64-linux-gnu.tar.xz"
+          echo "${GCC_SHA256}  ${tarball}" | sha256sum -c -
+          tar -xJf "$tarball" -C "$HOME"
+          rm -f "$tarball"
+
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12'
+
+      - name: Install the signing library
+        run: |
+          python -m pip install --only-binary=:all: 'cryptography==50.0.2'
+
+      - name: Build and sign
+        env:
+          COMMUNITY_KEY: ${{ secrets.LAKESHARK_COMMUNITY_KEY }}
+          SDK_PATH: ${{ steps.sdk.outputs.path }}
+        run: |
+          umask 077
+          key="$RUNNER_TEMP/community.pem"
+          printf '%s\n' "$COMMUNITY_KEY" > "$key"
+          unset COMMUNITY_KEY
+          LAKESHARK_COMMUNITY_KEY_FILE="$key" \
+          LAKESHARK_SDK="$GITHUB_WORKSPACE/.sdk-checkout/$SDK_PATH" \
+          LAP_CC="$HOME/riscv32-esp-elf/bin/riscv32-esp-elf-gcc" \
+            python tools/catalog.py --out out
+          rm -f "$key"
+
+      - name: Remove the key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/community.pem"
+
+      - name: Send to the store
+        env:
+          INGEST_SECRET: ${{ secrets.STORE_INGEST_SECRET }}
+        run: |
+          cd out
+          count=$(python -c 'import json; print(len(json.load(open("catalog.json"))["apps"]))')
+          if [ "$count" = "0" ]; then
+            echo "No published apps in the catalog; not sending an empty catalog."
+            exit 0
+          fi
+          args=(-F "catalog=@catalog.json;type=application/json")
+          dirs=()
+          [ -d files ] && dirs+=(files)
+          [ -d media ] && dirs+=(media)
+          while IFS= read -r -d '' f; do
+            args+=(-F "${f}=@${f}")
+          done < <(find "${dirs[@]}" -type f -print0 | sort -z)
+          umask 077
+          header="$RUNNER_TEMP/ingest.hdr"
+          printf 'Authorization: Bearer %s\n' "$INGEST_SECRET" > "$header"
+          unset INGEST_SECRET
+          status=0
+          curl --fail-with-body -sS --retry 2 -H "@$header" "${args[@]}" "$INGEST_URL" || status=$?
+          rm -f "$header"
+          exit $status
+
+      - name: Remove the ingest header
+        if: always()
+        run: rm -f "$RUNNER_TEMP/ingest.hdr"

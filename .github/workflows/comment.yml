@@ -1,0 +1,50 @@
+# Posts the one sticky check comment for check.yml.
+#
+# workflow_run runs from main with a token that can write to PRs, which is
+# why this is a separate workflow: check.yml compiles PR code and gets a
+# read-only token. This job never checks out the PR. It reads comment.md
+# from check.yml's artifact as plain text (capped, mentions defused), finds
+# the PR by head commit through the API rather than trusting the artifact,
+# and flags PRs that change files outside apps/ and owners.json.
+name: comment
+
+on:
+  workflow_run:
+    workflows: [check]
+    types: [completed]
+
+permissions: {}
+
+jobs:
+  comment:
+    if: github.event.workflow_run.event == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      actions: read          # download check.yml's artifact
+      contents: read         # check out tools/ from main
+      pull-requests: write   # post or update the comment
+    steps:
+      - name: Check out tools (main)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: tools
+
+      - name: Fetch the check results
+        continue-on-error: true
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: check-results
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/results
+
+      - name: Post or update the comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          RESULTS: ${{ runner.temp }}/results
+        run: python3 tools/post_comment.py

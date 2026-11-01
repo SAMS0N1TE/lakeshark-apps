@@ -1,0 +1,111 @@
+# PR checks: validate, build and (best effort) simulate the changed apps.
+#
+# Why pull_request and not pull_request_target: this job compiles code from
+# the PR. pull_request runs with a read-only token and no secrets, so nothing
+# here is worth stealing. The price is that it cannot comment on PRs from
+# forks, so it saves its results as an artifact and comment.yml (a
+# workflow_run job with pull-requests: write that never checks out or runs PR
+# code) posts them.
+#
+# The rules come from the base branch: tools/ and sdk.lock are checked out at
+# the PR's base commit into trusted/, the PR into pr/. Nothing from pr/ is
+# executed; its C files are only compiled, with an emptied environment.
+# A PR can still edit this file and change what runs for itself, so
+# comment.yml flags every PR that touches anything outside apps/ and
+# owners.json, and those get a hand review.
+name: check
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: check-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  # riscv32-esp-elf for ESP-IDF 5.5 (tools/tools.json in IDF v5.5.4).
+  GCC_VERSION: esp-14.2.0_20260121
+  GCC_SHA256: b3fce4b04dd15a9f0ed1c209b5a2f389c04eff92ed85e4cc0ebc275b7d95e95a
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out the rules (base branch)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: trusted
+          persist-credentials: false
+
+      - name: Check out the PR (data only)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: pr
+          fetch-depth: 2
+          persist-credentials: false
+
+      - name: Read sdk.lock (base branch)
+        id: sdk
+        run: python3 trusted/tools/sdk_lock.py trusted/sdk.lock >> "$GITHUB_OUTPUT"
+
+      - name: Check out the SDK at sdk.lock
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ steps.sdk.outputs.repo }}
+          ref: ${{ steps.sdk.outputs.ref }}
+          path: sdk
+          sparse-checkout: ${{ steps.sdk.outputs.path }}
+          persist-credentials: false
+
+      - name: Restore the RISC-V toolchain
+        id: gcc
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/riscv32-esp-elf
+          key: riscv32-esp-elf-${{ env.GCC_VERSION }}-linux-amd64
+
+      - name: Download the RISC-V toolchain
+        if: steps.gcc.outputs.cache-hit != 'true'
+        run: |
+          tarball="$RUNNER_TEMP/gcc.tar.xz"
+          curl -fsSL --retry 3 -o "$tarball" \
+            "https://github.com/espressif/crosstool-NG/releases/download/${GCC_VERSION}/riscv32-esp-elf-${GCC_VERSION#esp-}-x86_64-linux-gnu.tar.xz"
+          echo "${GCC_SHA256}  ${tarball}" | sha256sum -c -
+          tar -xJf "$tarball" -C "$HOME"
+          rm -f "$tarball"
+          "$HOME/riscv32-esp-elf/bin/riscv32-esp-elf-gcc" --version | head -1
+
+      - name: Validate, build, simulate
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+          AUTHOR_ID: ${{ github.event.pull_request.user.id }}
+          AUTHOR_TYPE: ${{ github.event.pull_request.user.type }}
+          BOT_LOGIN: ${{ vars.STORE_BOT_LOGIN || 'lakeshark-store[bot]' }}
+          SDK_PATH: ${{ steps.sdk.outputs.path }}
+        run: |
+          printf '%s' "$PR_BODY" > "$RUNNER_TEMP/body.txt"
+          gcc_dir="$HOME/riscv32-esp-elf/bin"
+          env -i HOME="$HOME" LANG=C.UTF-8 PATH="$gcc_dir:/usr/bin:/bin" \
+            LAP_CC="$gcc_dir/riscv32-esp-elf-gcc" \
+            LAKESHARK_SDK="$GITHUB_WORKSPACE/sdk/$SDK_PATH" \
+            python3 trusted/tools/check_pr.py --repo pr --out results \
+              --author "$AUTHOR" --author-id "$AUTHOR_ID" --author-type "$AUTHOR_TYPE" \
+              --body-file "$RUNNER_TEMP/body.txt" --bot-login "$BOT_LOGIN"
+
+      - name: Save the results for comment.yml
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: check-results
+          path: |
+            results/comment.md
+            results/results.json
+          retention-days: 7
+          if-no-files-found: ignore
