@@ -1,0 +1,35 @@
+{
+  "schema": 2,
+  "id": "wmbus",
+  "category": "radio",
+  "description": "Receives Wireless M-Bus (EN 13757-4 / OMS) meter telegrams on the LR2021: T1 and C1 at 868.95 MHz together, S1 at 868.3 MHz, or T1 at 868.3 MHz. Decrypts AES-128 (security mode 5, mode 7, ELL AES-CTR) with keys typed on the board, read from keys.txt or built in (manufacturers' public default keys), reads the open billing frames of Techem heat meters, heat cost allocators and water meters, shows each meter's readings and can log telegrams to the SD card.",
+  "license": "MIT",
+  "source_url": "https://github.com/zenobik/wmbus-lakeshark",
+  "status": "wip",
+  "ai": {
+    "use": "generated",
+    "tools": [
+      "Claude Code (Claude Opus 5.5)"
+    ],
+    "extent": "Wrote all of the source (radio setup, 3-of-6/NRZ/Manchester decoding, CRC, link/ELL/AFL/transport layers, AES-128 with CBC/CTR/CMAC, DIF/VIF records, public default keys, Techem billing frames (heat meters, allocators, water meters), UI) and its host unit tests from the public standards and documentation listed under references."
+  },
+  "third_party": [],
+  "references": [
+    "EN 13757-4 Communication systems for meters - Wireless M-Bus data exchange (modes S, T, C; 3-of-6 coding; frame formats A/B; CRC)",
+    "EN 13757-3 Communication systems for meters - Application protocols (DIF/VIF data records)",
+    "EN 13757-7 Communication systems for meters - Transport and security services (security modes 5 and 7, AFL)",
+    "OMS Specification Vol. 2 (Open Metering System), security profiles A and B, key derivation",
+    "FIPS-197 Advanced Encryption Standard",
+    "NIST SP 800-38A Recommendation for Block Cipher Modes of Operation (CBC, CTR)",
+    "RFC 4493 The AES-CMAC Algorithm",
+    "wmbusmeters (github.com/wmbusmeters/wmbusmeters, GPL-3.0): consulted for facts only, no code copied - the Diehl OMS default key (src/manufacturer_specificities.cc), the Techem vario451/compact5/fhkvdataiii/mkradio3/mkradio4 frame layouts and driver test telegrams used as test vectors",
+    "MeterRadioBridge compatibility list (meterradiobridge.pl/en/compatibility): which meter families ship with a zero or family key",
+    "LakeShark app SDK: include/lakeshark_app.h, docs/RADIO_IO.md"
+  ],
+  "declarations": {
+    "own_work_or_licensed": true,
+    "no_ai_cleanroom": true,
+    "licenses_respected": true,
+    "ethical_sources": true
+  }
+}
