@@ -1,0 +1,27 @@
+name: Submission ping
+
+# One phone push per new app submission (PRs the store opens from submit/*
+# branches). Runs from the base branch, never checks out or runs PR code, and
+# passes the PR's title and author through env only.
+on:
+  pull_request_target:
+    types: [opened, reopened]
+
+permissions: {}
+
+jobs:
+  ping:
+    if: startsWith(github.event.pull_request.head.ref, 'submit/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Push to ntfy
+        env:
+          TOPIC: lakeshark-0a69be2a81a0c5a026
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          curl -sS --fail-with-body \
+            -H "Title: New store submission" \
+            -H "Tags: package" \
+            -H "Click: $PR_URL" \
+            --data-binary "$PR_TITLE" "https://ntfy.sh/$TOPIC"
