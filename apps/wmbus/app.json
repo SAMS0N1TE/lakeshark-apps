@@ -6,6 +6,7 @@
   "license": "MIT",
   "source_url": "https://github.com/zenobik/wmbus-lakeshark",
   "status": "wip",
+  "min_firmware": "3.0.1",
   "ai": {
     "use": "generated",
     "tools": [
