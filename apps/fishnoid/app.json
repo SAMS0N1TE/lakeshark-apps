@@ -1,0 +1,23 @@
+{
+  "schema": 2,
+  "id": "fishnoid",
+  "category": "games",
+  "description": "An Arkanoid-style clone game with a marine theme.",
+  "license": "MIT",
+  "source_url": "",
+  "ai": {
+    "use": "generated",
+    "tools": [
+      "Gemini AI + Claude"
+    ],
+    "extent": "The AIs encoded the text based on my instructions."
+  },
+  "third_party": [],
+  "references": [],
+  "declarations": {
+    "own_work_or_licensed": true,
+    "no_ai_cleanroom": true,
+    "licenses_respected": true,
+    "ethical_sources": true
+  }
+}
