@@ -50,6 +50,26 @@ README.md NOTES.md  optional
 - Name, version and author come from `LAP_APP(...)` in your source.
 - Full format: [schema/app.schema.json](schema/app.schema.json).
 
+## Screenshot
+
+Add one. The first screenshot is your app's picture in the store; without one the store shows its letter art.
+
+- A real screenshot of the app on a board: `media/screen-1.png` (up to 4).
+- PNG or GIF, up to 300 KB, 120 to 2048 pixels each way, no longer than 4:1.
+- A T-Display-P4 screen is 568x1232.
+
+From the website: the Submit page has a SCREENSHOT step. TAKE ONE FROM MY BOARD reads the board's
+screen over USB (Chrome or Edge) and opens your app first if the board has it. Or upload a PNG.
+
+From a terminal, with the [LakeShark repo](https://github.com/SAMS0N1TE/LakeShark):
+
+```
+python tools/ls_console.py --port COM5 "tui open dice"
+python tools/ls_console.py --port COM5 --png media/screen-1.png
+```
+
+Use your board's port (`--list` shows them) and your app's id.
+
 ## 1. From LakeShark Studio
 
 1. Open your app, then PUBLISH from the menu.
