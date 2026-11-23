@@ -81,3 +81,13 @@ def test_catalog_needs_key(tmp_path):
     r = subprocess.run([sys.executable, str(REPO / 'tools' / 'catalog.py'), '--out', str(tmp_path)],
                        env=env, capture_output=True, text=True)
     assert r.returncode != 0 and 'LAKESHARK_COMMUNITY_KEY_FILE' in r.stderr
+
+
+def test_min_firmware_is_the_apps_own_when_later_than_the_floor():
+    sys.path.insert(0, str(REPO / 'tools'))
+    from catalog import min_firmware
+    assert min_firmware({}, '2.20.0') == '2.20.0'
+    assert min_firmware({'min_firmware': '3.0.1'}, '2.20.0') == '3.0.1'
+    # never below the release that carries the community key
+    assert min_firmware({'min_firmware': '2.9.9'}, '2.20.0') == '2.20.0'
+    assert min_firmware({'min_firmware': '2.20.0'}, '2.20.0') == '2.20.0'

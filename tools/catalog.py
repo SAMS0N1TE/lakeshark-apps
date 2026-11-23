@@ -83,6 +83,17 @@ def load_live(src):
             if isinstance(x, dict) and x.get('id') and x.get('sha256') and isinstance(x.get('size'), int)}
 
 
+def _version(v):
+    return tuple(int(x) for x in v.split('.'))
+
+
+def min_firmware(meta, floor):
+    """The app's own minimum (app.json "min_firmware": an API it needs) or the store's floor,
+    whichever is later: no app claims to run on a release older than the community key."""
+    own = meta.get('min_firmware')
+    return own if own and _version(own) > _version(floor) else floor
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('apps', nargs='*', help='app folders (default: every folder in apps/)')
@@ -151,7 +162,7 @@ def main(argv=None):
                 'author': m['author'], 'category': meta['category'], 'color': m['color'],
                 'icon_art': m['icon_art'], 'description': meta['description'],
                 'size': size, 'sha256': sha, 'signed': True,
-                'file': 'files/' + name, 'min_firmware': a.min_firmware,
+                'file': 'files/' + name, 'min_firmware': min_firmware(meta, a.min_firmware),
             }
             if meta.get('status') == 'wip':
                 entry['status'] = 'wip'

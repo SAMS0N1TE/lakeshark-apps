@@ -54,6 +54,7 @@
         "ethical_sources": {"const": true}
       }
     },
-    "status": {"enum": ["wip"]}
+    "status": {"enum": ["wip"]},
+    "min_firmware": {"type": "string", "pattern": "^[0-9]{1,3}[.][0-9]{1,3}[.][0-9]{1,3}$"}
   }
 }
