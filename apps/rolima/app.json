@@ -1,0 +1,23 @@
+{
+  "schema": 2,
+  "id": "rolima",
+  "category": "games",
+  "description": "A simple and fun racing game.",
+  "license": "MIT",
+  "source_url": "",
+  "ai": {
+    "use": "substantial",
+    "tools": [
+      "Claude"
+    ],
+    "extent": "The AI ​​wrote the code under my direction, using a roadmap, quality control, and reference material that I produced."
+  },
+  "third_party": [],
+  "references": [],
+  "declarations": {
+    "own_work_or_licensed": true,
+    "no_ai_cleanroom": true,
+    "licenses_respected": true,
+    "ethical_sources": true
+  }
+}
